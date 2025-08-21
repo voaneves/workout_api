@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     )
 
     DATABASE_URL: str  # Define que a variável DATABASE_URL é esperada e deve ser uma string
+    API_SECRET_KEY: str
+    API_ALGORITHM: str
 
 
 # Cria uma instância única das configurações para ser usada em todo o projeto
