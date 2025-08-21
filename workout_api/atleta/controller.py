@@ -1,6 +1,9 @@
 from datetime import datetime
 from uuid import uuid4
 from fastapi import APIRouter, Body, HTTPException, status, Depends, Query
+from fastapi_pagination import Page, paginate
+from fastapi_pagination.ext.sqlalchemy import paginate as sqlalchemy_paginate
+from sqlalchemy.future import select
 from typing import List, Optional
 from pydantic import UUID4
 
@@ -69,23 +72,29 @@ async def post(
     '/',
     summary='Consultar todos os Atletas',
     status_code=status.HTTP_200_OK,
-    response_model=List[AtletaCustom],  # Alterado para o novo schema
+    response_model=Page[AtletaCustom], # Altere o response_model para Page
 )
 async def query(
     db_session: DatabaseDependency,
     nome: Optional[str] = Query(None, description="Filtrar por nome do atleta"),
     cpf: Optional[str] = Query(None, description="Filtrar por CPF do atleta")
-) -> List[AtletaCustom]:
-    atletas = await AtletaService.query(db_session=db_session, nome=nome, cpf=cpf)
+) -> Page[AtletaCustom]:
+    query = select(AtletaModel)
+    if nome:
+        query = query.filter(AtletaModel.nome == nome)
+    if cpf:
+        query = query.filter(AtletaModel.cpf == cpf)
 
-    # Mapeia o resultado para o novo schema
-    return [
+    atletas = (await db_session.execute(query)).scalars().all()
+
+    atletas_custom = [
         AtletaCustom(
             nome=atleta.nome,
             centro_treinamento=atleta.centro_treinamento.nome,
             categoria=atleta.categoria.nome
         ) for atleta in atletas
     ]
+    return paginate(atletas_custom)
 
 
 @router.get(
