@@ -4,7 +4,7 @@ from fastapi import APIRouter, Body, HTTPException, status, Depends, Query
 from typing import List, Optional
 from pydantic import UUID4
 
-from workout_api.atleta.schemas import AtletaIn, AtletaOut, AtletaUpdate
+from workout_api.atleta.schemas import AtletaIn, AtletaOut, AtletaUpdate, AtletaCustom
 from workout_api.atleta.service import AtletaService
 from workout_api.atleta.models import AtletaModel
 from workout_api.categorias.models import CategoriaModel
@@ -69,18 +69,23 @@ async def post(
     '/',
     summary='Consultar todos os Atletas',
     status_code=status.HTTP_200_OK,
-    response_model=List[AtletaOut],
+    response_model=List[AtletaCustom],  # Alterado para o novo schema
 )
 async def query(
     db_session: DatabaseDependency,
     nome: Optional[str] = Query(None, description="Filtrar por nome do atleta"),
     cpf: Optional[str] = Query(None, description="Filtrar por CPF do atleta")
-) -> List[AtletaOut]:
-    """
-    Consulta todos os atletas da base de dados, com a possibilidade de
-    filtrar por nome e/ou CPF.
-    """
-    return await AtletaService.query(db_session=db_session, nome=nome, cpf=cpf)
+) -> List[AtletaCustom]:
+    atletas = await AtletaService.query(db_session=db_session, nome=nome, cpf=cpf)
+
+    # Mapeia o resultado para o novo schema
+    return [
+        AtletaCustom(
+            nome=atleta.nome,
+            centro_treinamento=atleta.centro_treinamento.nome,
+            categoria=atleta.categoria.nome
+        ) for atleta in atletas
+    ]
 
 
 @router.get(
