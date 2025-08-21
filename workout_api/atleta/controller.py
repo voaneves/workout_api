@@ -1,9 +1,10 @@
 from datetime import datetime
 from uuid import uuid4
-from fastapi import APIRouter, Body, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, status, Depends, Query
 from pydantic import UUID4
 
 from workout_api.atleta.schemas import AtletaIn, AtletaOut, AtletaUpdate
+from workout_api.atleta.service import AtletaService
 from workout_api.atleta.models import AtletaModel
 from workout_api.categorias.models import CategoriaModel
 from workout_api.centro_treinamento.models import CentroTreinamentoModel
@@ -11,7 +12,7 @@ from workout_api.centro_treinamento.models import CentroTreinamentoModel
 from workout_api.contrib.dependencies import DatabaseDependency
 from sqlalchemy.future import select
 
-router = APIRouter()
+router = APIRouter(prefix='/atletas', tags=['atleta'])
 
 @router.post(
     '/', 
@@ -64,15 +65,21 @@ async def post(
 
 
 @router.get(
-    '/', 
+    '/',
     summary='Consultar todos os Atletas',
     status_code=status.HTTP_200_OK,
-    response_model=list[AtletaOut],
+    response_model=List[AtletaOut],
 )
-async def query(db_session: DatabaseDependency) -> list[AtletaOut]:
-    atletas: list[AtletaOut] = (await db_session.execute(select(AtletaModel))).scalars().all()
-    
-    return [AtletaOut.model_validate(atleta) for atleta in atletas]
+async def query(
+    db_session: DatabaseDependency,
+    nome: Optional[str] = Query(None, description="Filtrar por nome do atleta"),
+    cpf: Optional[str] = Query(None, description="Filtrar por CPF do atleta")
+) -> List[AtletaOut]:
+    """
+    Consulta todos os atletas da base de dados, com a possibilidade de
+    filtrar por nome e/ou CPF.
+    """
+    return await AtletaService.query(db_session=db_session, nome=nome, cpf=cpf)
 
 
 @router.get(
