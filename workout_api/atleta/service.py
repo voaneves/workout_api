@@ -5,6 +5,7 @@ from uuid import uuid4
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 
 from workout_api.atleta.models import AtletaModel
 from workout_api.atleta.schemas import AtletaIn, AtletaOut, AtletaUpdate
@@ -92,7 +93,13 @@ class AtletaService:
         """
         Consulta uma lista de atletas, com filtros opcionais por nome e CPF.
         """
-        query = select(AtletaModel)
+        query = (
+            select(AtletaModel)
+            .options(
+                selectinload(AtletaModel.centro_treinamento), # <--- Carregar o relacionamento
+                selectinload(AtletaModel.categoria)          # <--- Carregar o relacionamento
+            )
+        )
         
         if nome:
             query = query.filter(AtletaModel.nome == nome)
